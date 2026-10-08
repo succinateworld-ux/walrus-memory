@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Walrus Memory Chatbot</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 760px;
+      margin: 40px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 5px;
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #666;
+      margin-bottom: 25px;
+    }
+
+    #status {
+      background: #e8f5e9;
+      color: #2e7d32;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    #chat {
+      background: white;
+      padding: 20px;
+      min-height: 400px;
+      max-height: 500px;
+      overflow-y: auto;
+      border-radius: 10px;
+      margin-bottom: 15px;
+    }
+
+    .message {
+      padding: 12px;
+      margin: 10px 0;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    .user {
+      background: #e8f0fe;
+      text-align: right;
+    }
+
+    .bot {
+      background: #eeeeee;
+    }
+
+    .system {
+      background: #e8f5e9;
+      color: #2e7d32;
+      font-size: 13px;
+    }
+
+    .input-area {
+      display: flex;
+      gap: 10px;
+    }
+
+    input {
+      flex: 1;
+      padding: 12px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    button {
+      padding: 12px 18px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background: #333;
+      color: white;
+      font-size: 15px;
+    }
+
+    button:hover {
+      background: #555;
+    }
+
+    .memory-box {
+      margin-top: 8px;
+      padding: 8px;
+      background: white;
+      border-radius: 5px;
+      font-size: 12px;
+      color: #555;
+      word-break: break-all;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>🧠 Walrus Memory Chatbot</h1>
+
+  <div class="subtitle">
+    A chatbot that remembers using decentralized storage
+  </div>
+
+  <div id="status">
+    🟢 Connected to Walrus Memory
+  </div>
+
+  <div id="chat">
+    <div class="message bot">
+      Hello! 👋 Tell me something you'd like me to remember.
+      <br><br>
+      Try:
+      <strong>"My favorite color is green."</strong>
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input
+      id="messageInput"
+      type="text"
+      placeholder="Tell me something..."
+      onkeydown="if(event.key === 'Enter') sendMessage()"
+    >
+
+    <button onclick="sendMessage()">Send</button>
+  </div>
+
+  <script>
+    const userId = "demo-user";
+
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const message = input.value.trim();
+
+      if (!message) return;
+
+      addMessage(message, "user");
+      input.value = "";
+
+      const lower = message.toLowerCase();
+
+      // REMEMBER
+      if (
+        lower.startsWith("remember") ||
+        lower.startsWith("my favorite") ||
+        lower.startsWith("i like") ||
+        lower.startsWith("i love") ||
+        lower.startsWith("my name is") ||
+        lower.startsWith("i am")
+      ) {
+
+        const memory = message
+          .replace(/^remember\s*/i, "")
+          .trim();
+
+        try {
+          const response = await fetch("/memory", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              userId: userId,
+              memory: memory
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Could not save memory");
+          }
+
+          addMessage(
+            "Got it! 🧠 I'll remember that.",
+            "bot"
+          );
+
+          addMessage(
+            "✓ Memory stored on Walrus<br>" +
+            "<div class='memory-box'>" +
+            "Blob ID: " + data.blobId +
+            "</div>",
+            "system"
+          );
+
+        } catch (error) {
+          addMessage(
+            "Sorry, I couldn't save that memory: " + error.message,
+            "bot"
+          );
+        }
+
+        return;
+      }
+
+      // RECALL
+      if (
+        lower.includes("what do you remember") ||
+        lower.includes("what do you know about me") ||
+        lower.includes("remember anything") ||
+        lower.includes("what is my favorite") ||
+        lower.includes("what's my favorite") ||
+        lower.includes("what is my name") ||
+        lower.includes("what's my name")
+      ) {
+
+        try {
+          const response = await fetch(`/memory/${userId}`);
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || "Could not retrieve memories");
+          }
+
+          if (data.memories.length === 0) {
+            addMessage(
+              "I don't have any memories about you yet.",
+              "bot"
+            );
+          } else {
+
+            const memories = data.memories
+              .map(item =>
+                "• " + item.memory +
+                "<div class='memory-box'>Walrus blob: " +
+                item.blobId +
+                "</div>"
+              )
+              .join("<br>");
+
+            addMessage(
+              "Here's what I remember about you:<br><br>" +
+              memories,
+              "bot"
+            );
+
+            addMessage(
+              "✓ Memories retrieved from Walrus",
+              "system"
+            );
+          }
+
+        } catch (error) {
+          addMessage(
+            "Sorry, I couldn't retrieve your memories: " +
+            error.message,
+            "bot"
+          );
+        }
+
+        return;
+      }
+
+      // HELP
+      if (
+        lower === "help" ||
+        lower === "hello" ||
+        lower === "hi"
+      ) {
+        addMessage(
+          "Hi! 👋 I can remember things you tell me and recall them later.<br><br>" +
+          "Try:<br>" +
+          "• My favorite color is green<br>" +
+          "• My name is Alex<br>" +
+          "• I like football<br><br>" +
+          "Then ask: <strong>What do you remember?</strong>",
+          "bot"
+        );
+
+        return;
+      }
+
+      addMessage(
+        "I can remember information you tell me. Try saying:<br><br>" +
+        "<strong>My favorite color is green</strong><br><br>" +
+        "Then ask me:<br>" +
+        "<strong>What do you remember?</strong>",
+        "bot"
+      );
+    }
+
+    function addMessage(message, sender) {
+      const chat = document.getElementById("chat");
+
+      const div = document.createElement("div");
+
+      div.className = `message ${sender}`;
+
+      div.innerHTML = message;
+
+      chat.appendChild(div);
+
+      chat.scrollTop = chat.scrollHeight;
+    }
+  </script>
+
+</body>
+</html>
