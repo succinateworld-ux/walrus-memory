@@ -143,7 +143,7 @@
   </div>
 
   <script>
-    const userId = "demo-user";
+    const userId = new URLSearchParams(window.location.search).get("user") || "demo-user";
 
     async function sendMessage() {
       const input = document.getElementById("messageInput");
